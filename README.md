@@ -49,6 +49,8 @@ database:
 
 Import the package
 ```go
+import "github.com/aamuz/go-infra-kit/config"
+
 cfg := infra.Config{}
 if err := infra.Read("config.yml", &cfg); err != nil {
     logger.Fatalf("Error reading config: %v", err)
@@ -60,4 +62,51 @@ Now we can use the merged config from yaml and environment file as one.
 ```go
 logger.Printf("server listening at port %s", cfg.Server.Port)
 logger.Fatal(http.ListenAndServe(":"+cfg.Server.Port, router))
+```
+
+
+## retry
+
+---
+
+retry provides a simple retry function to add retry policies in your application. 
+
+This is taken from the blog post by Nick Stogner [Simple Golang Retry Function](https://upgear.io/blog/simple-golang-retry-function/).
+
+### Install
+
+```shell
+go get -u github.com/aamuz/go-infra-kit/retry
+```
+
+### Usage
+
+In the following 
+```go
+
+import "github.com/aamuz/go-infra-kit/retry"
+
+...
+
+err := retry.Retry(5, time.Second, func() error {
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        // This error will result in a retry
+        return err
+    }
+    defer resp.Body.Close()
+
+	s := resp.StatusCode
+        switch {
+        case s >= 500:
+            // Retry
+            return fmt.Errorf("server error: %v", s)
+        case s >= 400:
+            // Don't retry, it was client's fault
+            return stop{fmt.Errorf("client error: %v", s)}
+        default:
+            // All is good no need to retry
+            return nil
+    }
+})
 ```
